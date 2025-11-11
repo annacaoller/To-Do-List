@@ -130,3 +130,20 @@ function renderItem(listId, task){
   }
 
   textEl.textContent = task.text;                                  // texto da tarefa
+
+    //  ações de item 
+  li.querySelector(".edit").addEventListener("click", () => editTask(listId, task.id));       // editar (prompt)
+  li.querySelector(".delete").addEventListener("click", () => deleteTask(listId, task.id));   // excluir
+  toggle.addEventListener("click", () => toggleTask(listId, task.id));                        // alternar done
+
+  //  Drag & Drop do item 
+  li.addEventListener("dragstart", onDragStart);                    // começa a arrastar
+  li.addEventListener("dragend", onDragEnd);                        // termina o arrasto
+
+  // reordenação dentro da mesma lista: calcula posição relativa e insere antes/depois
+  li.addEventListener("dragover", onItemDragOver);
+  li.addEventListener("drop", (e) => onItemDrop(e, listId));        // drop sobre outro item
+
+  return li;                                                        // retorna o <li> pronto
+}
+
