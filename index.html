@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>To-Do Board</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar" role="banner">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">✔</div>
+      <h1>To-Do Board</h1>
+    </div>
+    <div class="top-actions">
+      <button id="addListBtn" class="btn" type="button" aria-label="Criar nova lista">Nova lista</button>
+    </div>
+  </header>
+
+  <main class="board" id="board" role="application" aria-label="Quadro de listas">
+    <!-- colunas renderizadas via JS -->
+  </main>
+
+  <!-- Template de coluna (lista) -->
+  <template id="listTemplate">
+    <section class="list" role="region" aria-label="Lista de tarefas">
+      <div class="list-header">
+        <input class="list-title" aria-label="Nome da lista" />
+        <div class="list-actions">
+          <button class="icon-btn rename" title="Renomear lista" aria-label="Renomear lista">✎</button>
+          <button class="icon-btn danger delete-list" title="Excluir lista" aria-label="Excluir lista">🗑</button>
+        </div>
+      </div>
+      <div class="input-row">
+        <input class="task-input" type="text" placeholder="Adicionar nova tarefa…" aria-label="Digite a nova tarefa" />
+        <button class="btn add-task" type="button">Adicionar</button>
+      </div>
+      <ul class="todo-list" aria-live="polite"></ul>
+      <div class="empty" hidden>Sem tarefas por enquanto.</div>
+    </section>
+  </template>
+
+  <!-- Template de item -->
+  <template id="itemTemplate">
+    <li class="item" draggable="true">
+      <button class="toggle" title="Marcar como feita" aria-label="Marcar como feita"></button>
+      <div class="text-wrap">
+        <span class="check-badge">✓ </span>
+        <span class="text"></span>
+      </div>
+      <div class="actions">
+        <button class="icon-btn edit" title="Editar" aria-label="Editar tarefa">✎</button>
+        <button class="icon-btn danger delete" title="Excluir" aria-label="Excluir tarefa">🗑</button>
+      </div>
+    </li>
+  </template>
+
+  <script src="app.js"></script>
+
+
+</body>
+</html>
