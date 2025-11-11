@@ -147,3 +147,126 @@ function renderItem(listId, task){
   return li;                                                        // retorna o <li> pronto
 }
 
+
+// Ações de Lista
+
+// cria uma nova lista e a coloca à direita
+function addNewList(){
+  const newList = { id: uid(), name: "Nova lista", tasks: [] }; // objeto da nova lista
+  boardState.lists.push(newList);                                // adiciona ao estado
+  saveBoard(boardState);                                         // persiste
+
+  // render incremental: só a nova lista
+  boardEl.appendChild(renderList(newList));
+
+  // foca no título da nova lista para renomear imediatamente
+  const last = boardEl.querySelector(`.list[data-list-id="${newList.id}"] .list-title`);
+  if (last) last.select();
+}
+
+// renomeia uma lista existente
+function renameList(listId, newName){
+  const list = boardState.lists.find(l => l.id === listId);      // acha a lista
+  if (!list) return;                                             // não achou? nada a fazer
+  list.name = newName;                                           // atualiza o nome
+  saveBoard(boardState);                                         // persiste
+}
+
+// exclui uma lista (impede excluir a última)
+function deleteList(listId){
+  if (boardState.lists.length === 1){                            // única lista?
+    alert("Mantenha ao menos uma lista.");
+    return;
+  }
+  boardState.lists = boardState.lists.filter(l => l.id !== listId); // remove do estado
+  saveBoard(boardState);                                            // persiste
+  renderBoard();                                                     // re-render completo
+}
+
+
+//  Ações de Tarefa 
+
+// cria uma tarefa na lista indicada; atualiza DOM e empty-state
+function addTaskToList(listId, inputEl, listEl, setEmptyVisible){
+  const raw = inputEl.value.trim();                          // texto digitado
+  if (!raw){                                                 // vazio? feedback acessível
+    inputEl.focus();
+    inputEl.setAttribute("aria-invalid","true");
+    inputEl.placeholder = "Digite algo primeiro…";
+    return;
+  }
+  inputEl.removeAttribute("aria-invalid");                   // limpa erro visual
+
+  const list = boardState.lists.find(l => l.id === listId);  // encontra a lista
+  if (!list) return;
+
+  const task = { id: uid(), text: raw, done: false };        // cria objeto tarefa
+  list.tasks.push(task);                                     // adiciona ao estado
+  saveBoard(boardState);                                     // persiste
+
+  listEl.appendChild(renderItem(listId, task));              // adiciona no DOM
+  inputEl.value = "";                                        // limpa input
+  inputEl.focus();                                           // mantém foco para produtividade
+  setEmptyVisible();                                         // atualiza estado vazio
+}
+
+// alterna o status "done" de uma tarefa e aplica no DOM
+function toggleTask(listId, taskId){
+  const list = boardState.lists.find(l => l.id === listId);  // encontra a lista
+  if (!list) return;
+  const t = list.tasks.find(t => t.id === taskId);           // encontra a tarefa
+  if (!t) return;
+  t.done = !t.done;                                          // alterna
+  saveBoard(boardState);                                     // persiste
+
+  const li = findItemEl(listId, taskId);                     // pega o <li> correspondente
+  if (!li) return;
+  li.classList.toggle("completed", t.done);                  // UI: linha concluída
+  const toggle = li.querySelector(".toggle");                // UI: botão de done
+  toggle.classList.toggle("done", t.done);
+  toggle.title = t.done ? "Desmarcar tarefa" : "Marcar como feita";
+  toggle.setAttribute("aria-label", toggle.title);
+  toggle.textContent = t.done ? "✓" : "";
+}
+
+// edita o texto de uma tarefa (via prompt) e reflete no DOM
+function editTask(listId, taskId){
+  const list = boardState.lists.find(l => l.id === listId);
+  if (!list) return;
+  const t = list.tasks.find(t => t.id === taskId);
+  if (!t) return;
+
+  const next = prompt("Editar tarefa:", t.text);             // solicita novo texto
+  if (next === null) return;                                 // cancelou
+  const trimmed = next.trim();
+  if (!trimmed) return;                                      // vazio? ignora
+
+  t.text = trimmed;                                          // salva no estado
+  saveBoard(boardState);                                     // persiste
+  const liText = findItemEl(listId, taskId)?.querySelector(".text"); // atualiza no DOM
+  if (liText) liText.textContent = trimmed;
+}
+
+// remove uma tarefa da lista e atualiza empty-state visualmente
+function deleteTask(listId, taskId){
+  const list = boardState.lists.find(l => l.id === listId);  // acha a lista
+  if (!list) return;
+  const idx = list.tasks.findIndex(t => t.id === taskId);    // acha índice da tarefa
+  if (idx === -1) return;
+  list.tasks.splice(idx,1);                                  // remove do estado
+  saveBoard(boardState);                                     // persiste
+
+  const li = findItemEl(listId, taskId);                     // pega o <li> da tarefa
+  const listEl = li?.closest(".list");                       // seção da lista
+  li?.remove();                                              // remove do DOM
+
+  // atualizar mensagem "Sem tarefas..."
+  const updated = boardState.lists.find(l => l.id === listId);
+  const empty = listEl?.querySelector(".empty");
+  if (empty) empty.hidden = (updated?.tasks.length ?? 0) !== 0;
+}
+
+// utilitário: obtém o elemento <li> correspondente a uma tarefa específica
+function findItemEl(listId, taskId){
+  return boardEl.querySelector(`.item[data-list-id="${listId}"][data-id="${taskId}"]`);
+}
