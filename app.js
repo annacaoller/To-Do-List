@@ -270,3 +270,135 @@ function deleteTask(listId, taskId){
 function findItemEl(listId, taskId){
   return boardEl.querySelector(`.item[data-list-id="${listId}"][data-id="${taskId}"]`);
 }
+
+
+// Drag & Drop (itens) 
+
+// dados do item atualmente arrastado (origem)
+let dragData = /** @type {{listId:string, taskId:string} | null} */ (null);
+
+// início do arrasto de um item
+function onDragStart(e){
+  const li = e.currentTarget;                                 // <li> arrastado
+  li.classList.add("dragging");                               // marca visual
+  const listId = li.dataset.listId;                           // id da lista de origem
+  const taskId = li.dataset.id;                               // id da tarefa
+  dragData = { listId, taskId };                              // guarda para o drop
+  e.dataTransfer.effectAllowed = "move";                      // sugestão de efeito
+
+  // Para Firefox: precisa sempre setar algum dataTransfer
+  e.dataTransfer.setData("text/plain", JSON.stringify(dragData));
+}
+
+// fim do arrasto: limpa marcações e estado
+function onDragEnd(e){
+  e.currentTarget.classList.remove("dragging");
+  dragData = null;
+}
+
+// ao arrastar sobre outro item da mesma UL: decide inserir antes ou depois
+function onItemDragOver(e){
+  e.preventDefault();                                         // necessário para permitir drop
+  const overLi = e.currentTarget;                              // item sob o cursor
+  const container = overLi.parentElement;                      // a UL
+  const dragging = container.querySelector(".dragging");       // item que está sendo arrastado
+  if (!dragging || dragging === overLi) return;
+
+  // calcula metade da altura para decidir se solta antes ou depois
+  const rect = overLi.getBoundingClientRect();
+  const before = (e.clientY - rect.top) < rect.height / 2;
+  container.insertBefore(dragging, before ? overLi : overLi.nextSibling);
+}
+
+// drop sobre outro item (mesma UL): confirma reordenação conforme a posição atual no DOM
+function onItemDrop(e, targetListId){
+  e.preventDefault();
+  if (!dragData) return;
+
+  const { listId: fromListId, taskId } = dragData;            // origem
+  const targetUl = e.currentTarget.closest(".todo-list");     // UL alvo
+  commitReorder(fromListId, targetListId, targetUl);          // aplica no estado
+}
+
+// Drop em área vazia da lista (fora de itens): permite mover entre listas
+function onListDragOver(e, listEl){
+  if (!dragData) return;
+  e.preventDefault();
+  listEl.classList.add("drag-over");                          // highlight da lista
+}
+
+// conclui o drop na lista (apêndice ao final se necessário) e atualiza empty-states
+function onListDrop(e, targetListId, listUlEl, setEmptyVisible, listSectionEl){
+  e.preventDefault();
+  listSectionEl.classList.remove("drag-over");                // remove highlight
+  if (!dragData) return;
+
+  const { listId: fromListId } = dragData;                    // lista de origem
+
+  // Se nenhum item “recebeu” o drop diretamente, anexamos o <li> arrastado ao final da UL alvo
+  const dragging = document.querySelector(".item.dragging");
+  if (dragging && dragging.parentElement !== listUlEl){
+    listUlEl.appendChild(dragging);
+  }
+
+  // aplica a reordenação/movimentação no estado conforme a ordem atual do DOM
+  commitReorder(fromListId, targetListId, listUlEl);
+
+  // atualiza empty states de ambas as listas (origem e destino)
+  const fromListEl = boardEl.querySelector(`.list[data-list-id="${fromListId}"]`);
+  const fromEmpty = fromListEl?.querySelector(".empty");
+  const toEmpty = listSectionEl.querySelector(".empty");
+  if (fromEmpty){
+    const fromList = boardState.lists.find(l => l.id === fromListId);
+    fromEmpty.hidden = (fromList?.tasks.length ?? 0) !== 0;
+  }
+  if (toEmpty){
+    const toList = boardState.lists.find(l => l.id === targetListId);
+    toEmpty.hidden = (toList?.tasks.length ?? 0) !== 0;
+  }
+}
+
+// consolida a nova ordem após drag & drop (entre listas ou dentro da mesma)
+function commitReorder(fromListId, toListId, targetUl){
+  // Reconstroi a ordem conforme DOM na lista alvo
+  const toList = boardState.lists.find(l => l.id === toListId);
+  if (!toList) return;
+
+  // moveu ENTRE listas?
+  if (fromListId !== toListId){
+    const fromList = boardState.lists.find(l => l.id === fromListId);
+    if (!fromList) return;
+
+    const idx = fromList.tasks.findIndex(t => t.id === dragData.taskId);
+    if (idx !== -1){
+      const [moved] = fromList.tasks.splice(idx,1);           // retira da origem
+
+      // posição alvo = índice do elemento no UL conforme a ordem atual dos <li>
+      const idsInDom = [...targetUl.querySelectorAll(".item")].map(li => li.dataset.id);
+      const newIndex = Math.max(0, idsInDom.indexOf(dragData.taskId));
+      toList.tasks.splice(newIndex, 0, moved);                // insere no destino
+
+      // atualiza data-listId no DOM do item movido (para coerência visual)
+      const itemEl = targetUl.querySelector(`.item[data-id="${dragData.taskId}"]`);
+      if (itemEl) itemEl.dataset.listId = toListId;
+    }
+  } else {
+    // reordenação DENTRO da mesma lista: ordena array conforme ids exibidos no DOM
+    const orderIds = [...targetUl.querySelectorAll(".item")].map(li => li.dataset.id);
+    toList.tasks.sort((a,b) => orderIds.indexOf(a.id) - orderIds.indexOf(b.id));
+  }
+
+  saveBoard(boardState);                                       // persiste a nova ordem
+}
+
+
+//  Eventos globais
+
+// botão global de criar nova lista
+addListBtn.addEventListener("click", addNewList);
+
+
+// Bootstrap 
+
+// renderiza tudo na primeira carga
+renderBoard();
