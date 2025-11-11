@@ -9,3 +9,4 @@ Features
 -Mark tasks as completed.
 -Drag and Drop support to reorder tasks within a list.
 -Persistent data storage using Local Storage.
+
